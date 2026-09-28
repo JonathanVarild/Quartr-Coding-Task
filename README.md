@@ -5,6 +5,7 @@ A small full-stack application for searching SEC filings by company ticker. It u
 ## Features
 
 - Search SEC submissions using company tickers.
+- Retrieve the complete filing history referenced by the SEC submissions data.
 - Filter by one or more filing forms and by filing date.
 - Sort results by newest or oldest filing date.
 - Navigate results with direct page controls or a page-number input.
@@ -36,7 +37,7 @@ The frontend runs at `http://localhost:5173` and the backend at `http://localhos
 
 ### `GET /companies/:ticker/filings`
 
-Returns a filtered, sorted, and paginated list of filings.
+Returns a filtered, sorted, and paginated list from the company's complete SEC filing history.
 
 | Query parameter | Description |
 | --- | --- |
@@ -62,7 +63,7 @@ GET /filings/summary?tickers=AAPL&tickers=MSFT
 
 ### `GET /companies/:ticker/forms`
 
-Returns only the distinct form names needed by the frontend filter dropdown. Unlike the summary endpoint, these options are not restricted to the latest 12 months.
+Returns only the distinct form names needed by the frontend filter dropdown. Unlike the summary endpoint, these options cover the company's complete filing history and are not restricted to the latest 12 months.
 
 ```text
 GET /companies/AAPL/forms
@@ -87,7 +88,7 @@ frontend/src/components/  UI components
 frontend/src/hooks/       Filing explorer state and requests
 frontend/src/utils/       API client, formatting, and local types
 backend/routes/           Elysia route definitions
-backend/services/         SEC requests and response normalization
+backend/services/         SEC requests, rate limiting, history caching, and normalization
 shared/                   Types shared by the frontend and backend
 ```
 
@@ -97,8 +98,8 @@ The AI prompts used during development are documented in [AI-prompts.md](./AI-pr
 
 ## Notes
 
-Known limitations and possible improvements are documented in [NOTES.md](./NOTES.md).
+Implementation notes are documented in [NOTES.md](./NOTES.md).
 
 ## Time spent
 
-The task was capped at four hours, and I spent just about that: approximately three hours on the initial backend and frontend implementation, followed by one hour of refactoring, cleanup, and finalization.
+The task was capped at four hours, and I spent just about that: approximately three hours on the initial backend and frontend implementation, followed by one hour of refactoring, cleanup, and finalization. I later spent about 20 additional minutes fixing the full filing history, caching, and related issues.

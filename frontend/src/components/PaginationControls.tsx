@@ -28,7 +28,7 @@ export function PaginationControls({ pagination, onPageChange }: PaginationContr
 	const firstResult = total === 0 ? 0 : (page - 1) * pageSize + 1;
 	const lastResult = Math.min(page * pageSize, total);
 	const buttonClass =
-		"size-9 cursor-pointer place-items-center rounded-lg border text-sm font-medium transition focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-35";
+		"h-9 min-w-9 cursor-pointer place-items-center rounded-lg border px-2 text-sm font-medium transition focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-35";
 
 	useEffect(() => setPageInput(String(page)), [page]);
 

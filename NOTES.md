@@ -1,13 +1,9 @@
 # Notes
 
-## Known limitation
+## SEC data handling
 
-The filings endpoint currently uses the `filings.recent` data returned by the SEC submissions endpoint.
+The filings endpoints combine `filings.recent` from the main SEC submissions response with every historical submissions file referenced by `filings.files`.
 
-For companies with longer filing histories, the SEC may reference additional historical submission files through `filings.files`. These files are not currently fetched.
+The merged, unformatted filing history is cached in memory by CIK for one hour. Concurrent requests for an uncached company share the same in-flight promise.
 
-With more time, I would fetch those referenced files, normalize them using the same filing formatter, merge them with the recent filings, and apply filtering, sorting, and pagination to the combined result.
-
-## Further improvements
-
-- Cache company submissions to avoid fetching the same SEC submissions document multiple times during one frontend search.
+Outgoing SEC requests are limited to nine per second. Additional requests wait for the next one-second window.

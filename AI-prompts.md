@@ -12,22 +12,17 @@ ChatGPT discussion chat: https://chatgpt.com/share/6ab9350a-6f0c-83eb-a2ae-009b5
 >
 > Two environment gaps showed up: Bun is not installed, and the PDF utilities expected by the PDF skill are unavailable. I’ll use the already installed PDF library if present (read-only), then request Bun installation only if needed to complete and verify dependency setup.
 >
->
 > The brief appears to be a two-page SEC data-tooling assignment, but the requested work is only scaffolding. I’ll keep the setup domain-neutral: a React/Vite frontend, an Elysia API with route/service separation, and a source-only shared type workspace that both sides can consume.
 >
->
 > The scaffold is in place. The remaining step is to install Bun and resolve the declared workspace dependencies so I can generate the lockfile and verify type-checking, production builds, and the backend start command.
->
 >
 > Dependencies are installed and `bun.lock` has been generated with Bun 1.4.2. I’m now running the full type-check/build path and will correct only concrete setup issues those checks expose.
 >
 > Verification found one Bun 1.4 CLI compatibility issue: `--cwd` must follow `bun run`, otherwise Bun prints help and exits without running the workspace script. I’m correcting those root commands before re-running the checks.
 >
->
 > Type-checking and both production builds now pass. I’m doing a final runtime smoke test of the built backend and its single example route, then I’ll verify the combined development command starts both workspaces.
 >
 > Port 3000 is already occupied by another local process, so the start command correctly reached the server but could not bind its default port. I’ll run the smoke test on an alternate `PORT` value; the setup already supports that override.
->
 
 </details>
 
@@ -70,13 +65,11 @@ May I initialize a local Git repository and create a baseline commit so I can sa
 
 > Understood. I’ll proceed with the structural cleanup directly: remove workspace manifests and the Bun lockfile, flatten the backend and shared code, then install everything once at the root with npm and validate the root scripts.
 >
->
 > The project is now structurally a single root npm package: nested manifests/workspaces are gone, `shared/` contains only `types.ts`, and the backend is consolidated into `backend/index.ts`. Next I’m regenerating dependencies with npm and checking the revised commands.
 >
 > The npm install, combined type-check, and both production builds pass. I’m now smoke-testing the new root `npm run dev` command to confirm it launches the frontend and Bun backend together under the single package.
 >
 > The source layout is correct, but the previous workspace install left stale nested `node_modules` and empty `src/routes/services` directories. I’m removing only those generated/empty remnants so the filesystem also reflects the single-project structure.
->
 
 </details>
 
@@ -114,7 +107,6 @@ Verified dependency installation, type-checking, both builds, combined developme
 > I’ll inspect the current backend structure and scripts, then make the smallest change needed so `index.ts` owns the Elysia app while future route modules such as `/companies` and `/filings` can plug into it cleanly.
 >
 > The issue is a circular, backwards dependency: `routes/status.ts` imports the Elysia instance from `index.ts`, while `index.ts` never imports the route module, so `/api/status` is not actually registered. I’m switching this to Elysia’s plugin pattern: each route file exports its own route group, and `index.ts` composes and starts the app.
->
 >
 > The route now has no knowledge of the server entry point, and `index.ts` owns both the shared `/api` prefix and startup. That gives future modules a consistent pattern: export an Elysia plugin with `/companies` or `/filings`, then add one `.use(...)` in `index.ts`. I’m verifying the backend type graph and the actual HTTP route now.
 >
@@ -189,9 +181,7 @@ const app = new Elysia();
 
 > That 403 is coming from SEC’s traffic controls, not from Elysia. I’ll inspect how the request is currently made and verify SEC’s current request-header requirements, then adjust the backend fetch if needed.
 >
->
 > The missing declared `User-Agent` is the immediate cause: SEC requires automated clients to identify the application and provide a contact address, and limits traffic to 10 requests/second. There are also two follow-on bugs in the helper: this JSON is an object rather than an array, and its CIK field is named `cik_str`. I’m fixing all three so the next failure isn’t merely hidden behind the 403.
->
 >
 > The helper now requires `SEC_USER_AGENT` rather than inventing a contact identity, fails clearly on non-2xx responses, parses SEC’s actual object shape, and stores the zero-padded CIK needed by SEC’s company-submissions URLs. TypeScript passes; I’m doing a mocked initialization check so verification doesn’t send SEC a fake contact address.
 
@@ -239,7 +229,6 @@ Type-checking passes, and the helper resolves `AAPL` to `0000320193`. If SEC has
 >
 > The attachment contains 16 aligned columns, including the easy-to-miss `core_type` field. I’m retaining every column, normalizing `core_type` to `coreType`, converting SEC’s numeric XBRL flags to booleans, splitting item codes into an array, and adding the original-document URL required by the brief.
 >
->
 > The route now returns actual filing objects instead of the SEC’s parallel arrays. Backend type-checking and bundling both pass; I’m doing one final sample-data check against the supplied 1,000-row payload to verify field alignment and the generated SEC link.
 
 </details>
@@ -270,7 +259,6 @@ The endpoint now:
 <details><summary>2 previous messages</summary>
 
 > I’ll check the installed Elysia version’s query-validation API against this route, then show the smallest idiomatic change for `?page=2` and the pagination slice.
->
 
 </details>
 
@@ -329,7 +317,6 @@ Apply form filtering and sorting before calculating `totalItems` and slicing; ot
 > I’ll update the existing `formTypeFilter` to accept multiple form types and keep filings whose `form` matches any supplied value, then run the backend type-check.
 >
 > I found the route currently has only `page`. I’ll add `formTypeFilter` as a validated repeated query parameter (for example, `?formTypeFilter=10-K&formTypeFilter=10-Q`) and apply it before pagination so the returned `total` remains accurate.
->
 
 </details>
 
@@ -358,7 +345,6 @@ Backend type-check passes.
 > I’ll re-check the current route state and make sure `formTypeFilter` is represented as a plain `string[]`, then apply it before pagination.
 >
 > The placeholder is currently uninitialized, so the route does not type-check. I’ll wire it to Elysia’s array-query parsing and keep only filings whose form appears in that array.
->
 
 </details>
 
@@ -385,7 +371,6 @@ If omitted, all form types are returned. Pagination totals reflect the filtered 
 > I’ll inspect the summary route and existing filing/ticker helpers, then implement a typed `tickers` array query, deduplicate it, resolve each ticker to a CIK, fetch the companies concurrently, and count non-empty `core_type` values per company.
 >
 > The route is currently empty. I’ll return one typed summary per unique normalized ticker, including its resolved CIK and a `coreTypeCounts` map such as `{ "10-K": 3, "10-Q": 9, "8-K": 42 }`. Empty `core_type` values will be ignored.
->
 >
 > The typed implementation is in place and the backend type-check passes. I’m verifying the counter with duplicate and blank values, plus the repeated-query syntax used for the ticker set.
 
@@ -431,15 +416,11 @@ Backend type-check passes, and the counter and array-query parsing were verified
 
 > I’ll inspect the current frontend, API response shapes, and build configuration first. Then I’ll add the smallest Tailwind setup and structure the UI around the existing filings endpoints, keeping shared API types in `shared/types.ts`.
 >
->
 > I’ll make the controls functional, not just visual: the ticker loads available filing types from `/filings/summary`, type/date changes query `/companies/:ticker/filings`, and the results appear below with pagination. I’m also adding the minimal date-query support the frontend needs and moving public response types into `shared/types.ts`.
->
 >
 > The frontend and backend now type-check, and the date query rejects invalid dates correctly. I’m launching the interface for a visual pass at desktop and mobile widths; the initial state can be verified without live SEC data, while the Vite proxy handles API calls during normal development.
 >
->
 > The visual pass exposed an important data mismatch: the dropdown counts `core_type`, but the existing endpoint filter compares against `form`, so selecting “8-K” showed 103 results against a displayed count of 42. I’m preserving the existing form filter and adding a separate `coreTypeFilter` for this UI so the dynamic counts and returned records stay consistent.
->
 >
 > The interface is now verified live with the existing backend: ticker search populated 1,000 Apple filings, the dropdown loaded dynamic SEC types and counts, pagination rendered correctly, and selecting `8-K` returned exactly the 42 records shown by its `core_type` count. The layout also remains responsive by stacking controls below the desktop breakpoint.
 
@@ -470,9 +451,7 @@ Frontend and backend TypeScript checks pass. The minimal setup uses Tailwind’s
 
 > I’ll adjust the filter component so each active filter has its own clear action, keep the data-type menu clickable before a search with an explanatory empty state, and suppress the secondary summary error so an invalid ticker shows only the main filings error.
 >
->
 > The changes type-check. I’m doing a quick interaction pass to confirm the pre-search dropdown message is visible, the three clear controls render cleanly, and invalid tickers no longer produce the secondary data-type warning.
->
 
 </details>
 
@@ -494,9 +473,7 @@ Frontend and backend type-checks pass, and the interactions were visually verifi
 
 > I’ll make each filing row toggle an inline detail section, showing every field from the shared `Filing` type in a compact key/value table while preserving the existing SEC document link.
 >
->
 > The expandable rows are implemented and type-checking passes. I’m verifying the click and keyboard behavior plus the nested full-data table in the rendered interface.
->
 
 </details>
 
@@ -518,9 +495,7 @@ Frontend and backend type-checks pass, and the expanded layout was visually veri
 
 > I’ll replace the basic Previous/Next footer with numbered page buttons, first/last navigation, ellipses for large ranges, and a validated “go to page” number input.
 >
->
 > The new pagination passes type-checking. I’m verifying the numbered controls, ellipsis behavior, first/last navigation, and direct page input in the rendered table.
->
 
 </details>
 
@@ -546,14 +521,10 @@ Type-checks pass, and direct navigation to page 20 was visually verified.
 <details><summary>8 previous messages</summary>
 
 > I’ll make the filings table adapt by hiding secondary columns at narrower widths instead of relying on horizontal scrolling, tighten the detail table for mobile, keep the pagination footer horizontal whenever space allows, and add pointer cursors to every page-selector button.
->
->
 
 > The responsive layout changes are in place. I spotted one class conflict in the compact pagination state and an extra closing element from the edit; I’m correcting those before running the checks.
 >
->
 > TypeScript now passes for both frontend and backend. I’m doing a quick browser check of the table and footer at desktop and narrow widths so the responsive changes are verified visually, not just by the compiler.
->
 >
 > The final responsive pass now keeps only previous/current/next visible on very small screens (the exact page input remains available), while restoring the full controls from the small breakpoint upward. This prevents the pagination controls from collapsing into an awkward vertical column.
 
@@ -576,9 +547,7 @@ Implemented in [FilingsTable.tsx](./frontend/src/components/FilingsTable.tsx:111
 >
 > The summary response contains one ticker/CIK plus counts grouped by `core_type`. I’ll present that as one row per filing type with its occurrence count, plus the ticker, CIK, and aggregate total in the table header.
 >
->
 > The summary table is implemented and type-checks cleanly. I’m doing a quick visual pass to confirm its spacing, alignment, and placement beneath the paginated filings card.
->
 
 </details>
 
@@ -602,9 +571,7 @@ Files: [FilingSummaryTable.tsx](./frontend/src/components/FilingSummaryTable.tsx
 
 > I’ll turn the long two-column list into a responsive horizontal matrix: each filing type/count pair becomes a compact table cell, with one column on mobile and progressively more columns across wider screens. This keeps the summary readable while using the card width efficiently.
 >
->
 > The summary is now a compact responsive matrix—up to four type/count pairs per row on wide screens, scaling down to one on mobile. TypeScript passes; I’m checking the rendered grid for table alignment and wrapping.
->
 >
 > The rendered result now uses four compact type/count groups across the available width, reducing the summary from dozens of full-width rows to a short matrix while retaining a single-column mobile fallback.
 
@@ -626,15 +593,11 @@ This substantially reduces the table’s height and uses its width efficiently. 
 
 > I’ll trace every `coreType`/`core_type` use through the backend, shared types, and frontend, then replace the filtering and summary flow with the SEC `form` field while preserving unrelated filing details. I’ll also remove obsolete naming and helper artifacts rather than leaving compatibility aliases behind.
 >
->
 > The mismatch is in four places: the filings route still accepts a second `coreTypeFilter`, the frontend sends that parameter, the summary counts `core_type`, and shared/UI names expose `CoreTypeCounts`. I’ll remove that parallel path, use `formTypeFilter` exclusively, rename the summary contract to `formCounts`, and update the UI labels to “Form type.” The raw `coreType` value can remain in expanded filing details as metadata, but it will no longer influence filtering or summaries.
->
 >
 > The obsolete path is removed: there is now one filter parameter (`formTypeFilter`), one counting helper (`countFilingsByForm`), and one summary field (`formCounts`). The only remaining `coreType` references are the raw SEC metadata retained in each expanded filing record; they are no longer consulted by filtering or summary logic.
 >
->
 > Static checks and focused helper/query tests pass. I’m starting the backend briefly for an end-to-end response check so we can confirm the live summary contract returns `formCounts` and the filings endpoint accepts only `formTypeFilter`.
->
 >
 > The live endpoint check confirms the corrected behavior: the summary returns only `ticker`, `cik`, and `formCounts`; AAPL reports 11 `10-K` forms, and requesting `formTypeFilter=10-K` returns only `10-K` filings with a matching total of 11.
 
@@ -662,12 +625,9 @@ Verified with `npm run typecheck` and live endpoint checks. AAPL’s summary rep
 
 > I’ll inspect the updated summary response shape first, then adjust only the summary UI and shared frontend usage needed to show the 12-month scope and latest 10-K date.
 >
->
 > The frontend already receives `latest10KDate`, so the minimal change is confined to the summary card: label its totals as covering the last 12 months, show the latest 10-K date beside that total, and make the empty state use the same timeframe.
 >
->
 > The frontend change is complete and type-checks cleanly. I’m doing a quick rendered check to ensure the added timeframe and latest 10-K line stay compact within the existing responsive summary header.
->
 
 </details>
 
@@ -687,12 +647,9 @@ No backend changes were made. `npm run typecheck` passes, and the updated summar
 
 > I’ll add one `sortOrder` query parameter (`asc` or `desc`) to the filings endpoint, apply it before pagination, and add a small “Newest first / Oldest first” selector to the existing filter form. Changing it will reset pagination to page 1.
 >
->
 > The selector and backend sorting are implemented, and type-checking passes. I’m verifying that ascending and descending requests are sorted before pagination, so page 1 genuinely contains the oldest or newest filings rather than merely reordering the current page.
 >
->
 > End-to-end verification succeeded: switching the control to “Oldest first” reset to page 1 and changed the first filing from September 2026 to July 2015. The backend’s ascending and descending responses are correctly ordered before pagination.
->
 
 </details>
 
@@ -710,7 +667,6 @@ Verified both directions against AAPL data and ran `npm run typecheck` successfu
 <details><summary>2 previous messages</summary>
 
 > I’ll update the ticker input validation and sanitization limit from 4 to 10 characters, keeping the existing allowed ticker characters unchanged.
->
 
 </details>
 
@@ -729,7 +685,6 @@ Updated the ticker limit from 4 to 10 characters in [Filters.tsx](./frontend/src
 <details><summary>2 previous messages</summary>
 
 > You’re right: checking only the filing year creates a calendar-year window that can include nearly two years of data. I’ll replace it with an exact rolling 12-month date range and rename the intermediate value to reflect that it contains form strings, not submission objects.
->
 
 </details>
 
@@ -750,19 +705,13 @@ The previous year-only comparison could include nearly two years of filings. It 
 
 > I’ll simplify this without changing behavior: split the large filings table into focused detail and pagination components, consolidate filter values and updates into one object instead of many individual props, keep ticker input state inside the filter form, and remove occurrence counts from the form-type dropdown. I’ll first map the current component boundaries and dependencies so the refactor stays contained.
 >
->
 > The cleanest boundary is emerging: data-fetching/state belongs in a hook, the filter bar should accept one filter value plus one change callback, and the 356-line filings table should delegate details and pagination. I’m applying those separations while keeping the existing UI and request behavior intact.
->
->
 
 > I’ve isolated the state/data-fetching already; next I’m finishing the component split, removing the form-count badges, and then I’ll run the frontend typecheck and a focused UI verification.
 >
->
 > The main simplification is now in place: `App` is orchestration-only, request state lives in one hook, filters use a single value/change contract, and filing details plus pagination are independent components. The form-type menu now shows only form names—counts remain solely in the summary table. I’m checking the types and integration points now.
 >
->
 > Typechecking and the full production build both pass. I’m doing one browser pass now to confirm the refactor preserved the filter interactions and that the type dropdown no longer renders occurrence counts.
->
 
 </details>
 
@@ -787,9 +736,7 @@ Verified with:
 
 > I’ll group the reusable frontend helpers under `src/utils` and update all imports. Since this checkout has no Git history and its instructions prohibit deleting files in that case, I’ll leave the existing root modules as small compatibility re-exports rather than removing them outright.
 >
->
 > The implementations now live under `frontend/src/utils`; component and hook imports point there directly. The original root paths are only one-line re-export shims because this non-Git checkout’s repository instructions disallow deleting them. I’m validating the new module paths now.
->
 
 </details>
 
@@ -808,7 +755,6 @@ Validated with frontend typechecking and a production build.
 <details><summary>2 previous messages</summary>
 
 > You’re right—the compatibility shims are unnecessary now that all imports target `src/utils`. I’ll remove exactly the three obsolete root files and verify there are no remaining references.
->
 
 </details>
 
@@ -826,9 +772,7 @@ All imports now reference `frontend/src/utils` directly. Typechecking and the fr
 
 > I’ll document the frontend’s public functions and components, with detailed `@param`, `@returns`, and `@throws` notes on API helpers where those contracts matter. I’ll keep internal one-off handlers uncommented to avoid adding noise.
 >
->
 > The frontend exports are documented now, including component prop behavior and the API error contracts. I’m extending the same standard to the backend helpers so the documentation is consistent across the project, while leaving straightforward local event handlers uncluttered.
->
 
 </details>
 
@@ -849,15 +793,11 @@ Both `npm run typecheck` and `npm run build` pass.
 
 > I’ll do a final, narrow consistency pass across source, configuration, and documentation: remove stale wording or refactor leftovers, align small naming/import issues, verify the project, then update the README to match the finished behavior and commands.
 >
->
 > The audit found only small cleanup items: two type imports were emitted as runtime imports, two route comments were stale scaffolding, one `else` was redundant, the latest-10-K lookup was implicit, and form controls did not all inherit the same font. I’m correcting those and making the SEC user agent optionally configurable without changing the default behavior.
->
 >
 > The final cleanup is applied, and the README now describes the actual UI, routes, query parameters, runtime requirements, project layout, and the known SEC historical-data limitation. I’m running the full checks and one last stale-reference scan now.
 >
->
 > The source and documentation checks pass. I also found generated `dist` bundles and TypeScript build-info files left by verification; they are ignored and reproducible, so I’m removing those final artifacts now to leave the submission tree clean.
->
 
 </details>
 
@@ -876,7 +816,6 @@ Both `npm run typecheck` and `npm run build` passed before generated artifacts w
 <details><summary>2 previous messages</summary>
 
 > I’ll restore the static SEC user agent and remove the now-inaccurate environment-variable instructions from the README.
->
 
 </details>
 
@@ -888,9 +827,7 @@ Restored the static SEC user agent and updated the README accordingly. Backend t
 
 > I’ll add a small `/filings/getFilters` endpoint that returns only distinct form names from all available recent filings. The frontend will fetch those options independently, while `/filings/summary` remains responsible only for the 12-month summary and latest 10-K data.
 >
->
 > The split is implemented: `/summary` still provides the 12-month counts, while `/getFilters` returns only distinct form names from the full `filings.recent` set. The frontend now stores and loads those two datasets independently. I’m validating the route contracts and build now.
->
 
 </details>
 
@@ -902,3 +839,96 @@ Implemented the endpoint split with minimal changes:
 - Added the response type and updated the README.
 
 Verified live with AAPL: `/getFilters` includes older forms absent from the 12-month summary. Typechecking and production builds pass.
+
+# Rate-limit and full-history improvements
+
+> Make changes to fetchWithUserAgent so that outgoing requests are limited to 9 per second. Any more than that should be queued and processed when a new second starts.
+>
+> [Attachment: `backend/services/fetchHelper.ts`]
+
+<details><summary>7 previous messages</summary>
+
+> I’ll inspect `fetchWithUserAgent`, its callers, and the existing test setup, then make the smallest change that enforces a shared 9-requests-per-second queue and verify it with focused tests.
+>
+> Minimal, simple implementation please.
+>
+> The helper is a single shared module, so a module-level limiter will cover all current callers. I’m implementing one-second windows that begin with the first outgoing request: the first 9 start immediately, and queued calls are released in batches of up to 9 at each following boundary.
+>
+> Agreed. I’ll trim the limiter to the essential counter, FIFO queue, and one reset callback while keeping the same behavior.
+
+</details>
+
+Updated [fetchHelper.ts](./backend/services/fetchHelper.ts:1) with a minimal FIFO rate limiter:
+
+- Up to 9 requests start per second.
+- Additional requests queue until the next second.
+- Verified with backend type-checking and a 20-request timing test.
+
+> Now. We need to update the flow for retrieving company filings. Each time we requests the filings for a company, we first store the ones under the "recent" key. After that, we populate the full filing history by iterating all separate files under the "files" key in the initial request. Those can be retrieived using [https://data.sec.gov/submissions/CIK0000320193-submissions-001.json](https://data.sec.gov/submissions/CIK0000320193-submissions-001.json) and follow the format of the attached file. The full history (without any formatting or such) then needs to be cached so that it can be reused for pagination, other endpoints, etc. Also, once a request starts retrieving the filing history for a specific company, other requests should wait for the same promise to finish and not start separate requests. Give it a TTL of 3600 seconds. Keep implementation as simple and minimal as possible. Create a helper for the cache and fetching if needed.
+>
+> [Attachment: sample SEC historical submissions JSON using the same parallel-column filing format]
+
+<details><summary>6 previous messages</summary>
+
+> I’ll trace the existing filings flow and the attached SEC response shape first. Then I’ll add one small shared cache/fetch helper so recent filings are stored first, historical files are appended raw, and concurrent requests for the same CIK reuse one in-flight promise for one hour.
+>
+> The historical file has the same parallel-column shape as `filings.recent`. I’ll cache that raw merged shape—not formatted application objects—and route all company-filing consumers through it. The cache entry will only become available after the complete history succeeds; meanwhile, same-CIK callers receive the same in-flight promise.
+>
+> The source type-checks. I’m doing one focused mocked check now for the important behavior: recent-first merging, ordered historical-file appending, exact in-flight promise reuse, cache hits, and refetch after the 3,600-second TTL.
+
+</details>
+
+Implemented the full filing-history flow.
+
+- Starts with `filings.recent`, then sequentially appends every referenced historical file.
+- Caches the raw SEC column data by CIK for 3,600 seconds.
+- Concurrent requests for the same CIK share one in-flight promise.
+- Failed/partial retrievals are not cached.
+- Filings, forms, and summary endpoints now reuse the helper.
+
+Main implementation: [filingHelper.ts](./backend/services/filingHelper.ts:25)
+
+Verified with:
+
+- Full frontend/backend type-check.
+- Mocked recent/history merging.
+- In-flight promise identity.
+- Cache hits and TTL expiration.
+
+> [Image attachment: screenshot of the pagination overflow issue]
+
+> Fix pagination overflowing its buttons with large numbers
+
+<details><summary>4 previous messages</summary>
+
+> I see it—the API’s `total` is the number of filings, but the pagination UI appears to be treating it as the number of pages. I’ll trace that calculation and make the smallest correction.
+>
+> Confirmed: the page buttons have a fixed square width (`size-9`), so four-plus-digit labels spill into adjacent controls. I’ll let buttons grow horizontally while retaining the same 36px minimum size.
+
+</details>
+
+Fixed [PaginationControls.tsx](./frontend/src/components/PaginationControls.tsx:30).
+
+Page buttons now retain a 36px minimum width but expand for large numbers such as `6705`. Frontend type-check passes.
+
+> Update comments, tsdocs, etc
+
+<details><summary>6 previous messages</summary>
+
+> I’ll review the changed filing, rate-limit, route, and pagination code for stale comments and documentation, then update only descriptions that no longer match the implementation.
+>
+> The main stale material is in `NOTES.md`, which still says historical files and caching are unimplemented. I’m also expanding the two public helper TSDocs so their rate-limit, full-history, TTL, concurrency, and error behavior are explicit, while leaving self-explanatory internals uncommented.
+>
+> The documentation and code comments are updated, and the full type-check passes. I’m doing one final stale-text scan; the first scan’s shell pattern interpreted Markdown backticks, so I’m rerunning it with literal-safe quoting.
+
+</details>
+
+Updated documentation to match the implementation:
+
+- Added rate-limit behavior to `fetchWithUserAgent` TSDoc.
+- Documented full-history retrieval, caching, TTL, concurrency, and errors for `getCompanyFilings`.
+- Updated README features and endpoint descriptions.
+- Replaced obsolete limitations in `NOTES.md` with current SEC data-handling details.
+- Corrected remaining references to “known limitations.”
+
+Full frontend/backend type-check and diff validation pass.

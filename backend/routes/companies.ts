@@ -1,7 +1,6 @@
 import { Elysia, t } from "elysia";
-import type { SecSubmissions } from "../services/filingHelper";
-import { fetchWithUserAgent, SECRequestError } from "../services/fetchHelper";
-import { formatFilings } from "../services/filingHelper";
+import { SECRequestError } from "../services/fetchHelper";
+import { formatFilings, getCompanyFilings } from "../services/filingHelper";
 import { CIKNotFoundError, tickerHelper } from "../services/tickerHelper";
 
 /** Routes for retrieving filtered and paginated filings by company ticker. */
@@ -20,14 +19,7 @@ companiesRoutes.get(
 			const formTypeFilter: string[] = query.formTypeFilter ?? [];
 			const { from, to } = query;
 
-			const result = await fetchWithUserAgent(`https://data.sec.gov/submissions/CIK${cik}.json`);
-
-			if (!result.ok) {
-				throw new SECRequestError(`Failed to fetch filings for ticker: ${ticker}`);
-			}
-
-			const submissions = (await result.json()) as SecSubmissions;
-			const filings = formatFilings(submissions.filings.recent, cik);
+			const filings = formatFilings(await getCompanyFilings(cik), cik);
 			const filteredFilings = filings.filter(
 				(filing) => (formTypeFilter.length === 0 || formTypeFilter.includes(filing.form)) && (!from || filing.filingDate >= from) && (!to || filing.filingDate <= to),
 			);
@@ -66,14 +58,8 @@ companiesRoutes.get("/:ticker/forms", async ({ params, status }) => {
 	try {
 		const { ticker } = params;
 		const cik = tickerHelper.getCIK(ticker);
-		const response = await fetchWithUserAgent(`https://data.sec.gov/submissions/CIK${cik}.json`);
-
-		if (!response.ok) {
-			throw new SECRequestError(`Failed to fetch filing forms for ticker: ${ticker}`);
-		}
-
-		const submissions = (await response.json()) as SecSubmissions;
-		const forms = [...new Set(submissions.filings.recent.form.map((form) => form.trim()).filter(Boolean))];
+		const filings = await getCompanyFilings(cik);
+		const forms = [...new Set(filings.form.map((form) => form.trim()).filter(Boolean))];
 
 		return { forms };
 	} catch (error) {

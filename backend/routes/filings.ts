@@ -1,8 +1,7 @@
 import { Elysia, t } from "elysia";
 import type { CompanyFilingSummary } from "../../shared/types";
-import type { SecSubmissions } from "../services/filingHelper";
-import { fetchWithUserAgent, SECRequestError } from "../services/fetchHelper";
-import { countFilingsByForm } from "../services/filingHelper";
+import { SECRequestError } from "../services/fetchHelper";
+import { countFilingsByForm, getCompanyFilings } from "../services/filingHelper";
 import { CIKNotFoundError, tickerHelper } from "../services/tickerHelper";
 
 /** Routes for aggregate filing summaries across one or more tickers. */
@@ -16,25 +15,19 @@ filingsRoutes.get(
 			const summaries = await Promise.all(
 				tickers.map(async (ticker): Promise<CompanyFilingSummary> => {
 					const cik = tickerHelper.getCIK(ticker);
-					const response = await fetchWithUserAgent(`https://data.sec.gov/submissions/CIK${cik}.json`);
-
-					if (!response.ok) {
-						throw new SECRequestError(`Failed to fetch filings for ticker: ${ticker}`);
-					}
-
-					const submissions = (await response.json()) as SecSubmissions;
+					const filings = await getCompanyFilings(cik);
 
 					const today = new Date();
 					const twelveMonthsAgo = new Date(today);
 					twelveMonthsAgo.setUTCFullYear(twelveMonthsAgo.getUTCFullYear() - 1);
 					const startDate = twelveMonthsAgo.toISOString().slice(0, 10);
 					const endDate = today.toISOString().slice(0, 10);
-					const formsFromLastTwelveMonths = submissions.filings.recent.form.filter((_, index) => {
-						const filingDate = submissions.filings.recent.filingDate[index];
+					const formsFromLastTwelveMonths = filings.form.filter((_, index) => {
+						const filingDate = filings.filingDate[index];
 						return filingDate >= startDate && filingDate <= endDate;
 					});
 
-					const latest10KDate = submissions.filings.recent.filingDate.filter((_, index) => submissions.filings.recent.form[index] === "10-K")[0] ?? null;
+					const latest10KDate = filings.filingDate.filter((_, index) => filings.form[index] === "10-K")[0] ?? null;
 
 					return {
 						ticker,
