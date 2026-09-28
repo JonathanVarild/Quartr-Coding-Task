@@ -99,6 +99,9 @@ The AI prompts used during development are documented in [AI-prompts.md](./AI-pr
 
 Known limitations and possible improvements are documented in [NOTES.md](./NOTES.md).
 
+> [!IMPORTANT]
+> Fixes for full filing history, caching, and related SEC data handling are available on the [`full-history-fix`](https://github.com/JonathanVarild/Quartr-Coding-Task/tree/full-history-fix) branch.
+
 ## Time spent
 
-The task was capped at four hours, and I spent just about that: approximately three hours on the initial backend and frontend implementation, followed by one hour of refactoring, cleanup, and finalization.
+The task was capped at four hours, and I spent just about that: approximately three hours on the initial backend and frontend implementation, followed by one hour of refactoring, cleanup, and finalization. I later spent about 20 additional minutes fixing the full filing history, caching, and related issues on the [`full-history-fix`](https://github.com/JonathanVarild/Quartr-Coding-Task/tree/full-history-fix) branch.
